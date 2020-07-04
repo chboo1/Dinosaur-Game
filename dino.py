@@ -2,7 +2,7 @@ from json import load
 from tkinter import Tk, Canvas
 import sys
 
-worldDir = "/home/pi/dinosaur/data"
+worldDir = "/home/pi/github/Dinosaur-Game/data"
 worldId = "newworld"
 
 class Element():
@@ -24,15 +24,10 @@ class Platform(Element):
         self.root = master
         self.owndata = owndata
         self.c = canvas
-        print(self.c)
-        self.height = self.root.winfo_screenheight()
-        print(self.height)
+        self.height = self.root.winfo_screenheight() - 55 
 
     def draw(self):
-        self.myitem = self.c.create_rectangle(self.owndata["pos"], self.height - 50, self.owndata["end"], self.height, fill="#000000", outline="#000000")
-        print(self.myitem, " Item")
-        print(self.owndata)
-        print("Data", self.owndata["pos"], self.height - 50, self.owndata["end"], self.height)
+        self.myitem = self.c.create_rectangle(self.owndata["pos"], self.height - 50, self.owndata["end"], self.height, fill="#a54a2a", outline="#a54a2a")
         return self.myitem
 
 
@@ -49,15 +44,16 @@ class Main():
         self.worldarr = self.world["world"]
         self.root = Tk()
         self.width = self.root.winfo_screenwidth()
-        self.height = self.root.winfo_screenheight()
+        self.height = self.root.winfo_screenheight() - 55
         self.root.geometry("{}x{}".format(self.width, self.height))
         self.root.title("Dinosaur Game! - By Samuel Navert")
         self.c = Canvas(self.root, width=self.width, height=self.height, bg="#ff5500")
         self.arr = []
-        print(self.c)
         self.generate_world()
         self.c.pack()
-        print(self.height)
+        self.root.after(10, self.afterloop)
+        self.root.bind("<Left>", self.left)
+        self.root.bind("<Right>", self.right)
         self.root.bind("<Escape>", self.kr)
         self.root.mainloop()
 
@@ -68,16 +64,22 @@ class Main():
     def generate_world(self):
         for i in self.worldarr:
             if i["type"] == "platform":
-                print("Platform")
                 self.arr.append(Platform(i, self.c, self.root))
         for obj in self.arr:
-            print(obj)
             obj.draw()
-        print("for loop done")
 
     
     def afterloop(self):
-        pass
+        self.root.after(10, self.afterloop)
+
+
+
+    def left(self, event=None):
+        self.c.move("all", 10, 0)
+
+
+    def right(self, event=None):
+        self.c.move("all", -10, 0)
 try:
     with open("{}/{}.json".format(worldDir, worldId), "r") as f:
         data = load(f)

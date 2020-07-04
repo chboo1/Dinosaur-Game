@@ -19,11 +19,11 @@
 		{
 			"type": "hole",
 			"pos": 1500,
-			"end": 2200
+			"end": 1575 
 		},
 		{
 			"type": "platform",
-			"pos": 2200,
+			"pos": 1575,
 			"end": 3000
 		},
 		{
