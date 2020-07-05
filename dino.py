@@ -1,5 +1,5 @@
 from json import load
-from tkinter import Tk, Canvas
+from tkinter import Tk, Canvas, PhotoImage
 import sys
 
 worldDir = "/home/pi/github/Dinosaur-Game/data"
@@ -49,6 +49,7 @@ class Main():
         self.root.title("Dinosaur Game! - By Samuel Navert")
         self.c = Canvas(self.root, width=self.width, height=self.height, bg="#ff5500")
         self.arr = []
+        self.character = self.c.create_oval(50, self.height - 100, 100, self.height - 50, fill="#ffff00", outline="#ffff00")
         self.generate_world()
         self.c.pack()
         self.root.after(10, self.afterloop)
@@ -71,15 +72,19 @@ class Main():
     
     def afterloop(self):
         self.root.after(10, self.afterloop)
+        self.c.move("all", -1, 0)
+        self.c.move (self.character, 1, 0)
 
 
 
     def left(self, event=None):
         self.c.move("all", 10, 0)
+        self.c.move(self.character, -10, 0)
 
 
     def right(self, event=None):
         self.c.move("all", -10, 0)
+        self.c.move(self.character, 10, 0)
 try:
     with open("{}/{}.json".format(worldDir, worldId), "r") as f:
         data = load(f)
