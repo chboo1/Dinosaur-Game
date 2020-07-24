@@ -1,0 +1,24 @@
+{
+	"world":
+	[
+		{
+			"type":"platform",
+			"pos": 0,
+			"end": 70
+		},
+		{
+			"type":"hole",
+			"pos": 70,
+			"end": 270
+		},
+		{
+			"type":"platform",
+			"pos": 270,
+			"end": 500
+		},
+		{
+			"type":"flag",
+			"pos": 500
+		}
+	]
+}

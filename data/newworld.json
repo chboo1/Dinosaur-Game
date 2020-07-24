@@ -35,7 +35,7 @@
 	{
 		"skyColor":"default",
 		"groundColor":"default",
-		"characterColor":"#ffff00",
+		"characterColor":"#ffffff",
 		"characterSize":50
 	}
 }
