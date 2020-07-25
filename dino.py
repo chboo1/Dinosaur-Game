@@ -61,15 +61,11 @@ class Flag(Element):
 
 
     def check(self, num, charPos=[None, None]):
-        print(charPos)
-        print(self.owndata)
         self.charPos = charPos
         self.c.create_line(self.charPos[1], 0, self.charPos[1], 0)
-        if self.charPos[0] + 50 >= self.owndata["pos"]:
-            print("(:")
+        if self.charPos[0] + self.charPos[1] >= self.owndata["pos"]:
             return True
         else:
-            print("):")
             return False
 
 
@@ -113,15 +109,31 @@ class Main():
 
     def start(self):
         self.master = Tk()
-        self.started = False
         self.width = self.master.winfo_screenwidth()
+        self.levels = []
         self.height = self.master.winfo_screenheight() - 55
         self.master.geometry("{}x{}".format(self.width, self.height))
         self.canvas = Canvas(self.master, width=self.width, height=self.height)
+        self.text = self.canvas.create_text(500, 100, fill="#000000", text="", anchor="w")
+        self.pos = 130
+        i = 0
+        for f in os.listdir(self.worldDir):
+            if not f[0] == "." or f[-4:0] == ".swp" or f[-6:0] == ".ignore":
+                self.levels.append([f, None])
+        for level in self.levels:
+            self.levels[i][1] = self.canvas.create_rectangle(0, self.pos, self.width, self.pos + 30, fill="#b55a3a", outline="#555555")
+            self.canvas.create_text(self.width / 2, self.pos + 15, text=level[0])
+            self.pos += 30
+            me = self.levels[i - 1][1]
+            self.canvas.tag_bind(me, "<Button-1>", lambda e: self.setworldid(i))
+            i += 1
+                        
+        self.started = False
         self.worldId = ""
-        self.text = self.canvas.create_text(self. width / 2, self.height / 2, fill="#000000", text="")
         self.canvas.pack()
         self.master.bind("<KeyPress>", self.key)
+        self.master.bind("<4>", lambda e: self.canvas.move("all", 0, 5))
+        self.master.bind("<5>", lambda e: self.canvas.move("all", 0, -5))
         self.master.after(16, self.afterloop)
         self.master.mainloop()
         try:
@@ -155,7 +167,8 @@ class Main():
         self.arr = []
         self.landingX = []
         self.charColor = "#ffff00" if self.data["custom"]["characterColor"] == "default" else self.data["custom"]["characterColor"]
-        self.character = self.c.create_oval(50, self.height - (50 + int(self.data["custom"]["characterSize"])), 50 + int(self.data["custom"]["characterSize"]), self.height - 50, fill=self.charColor, outline=self.charColor)
+        self.charSize = 50 if self.data["custom"]["characterSize"] == "default" else self.data["custom"]["characterSize"]
+        self.character = self.c.create_oval(50, self.height - (50 + int(self.charSize)), 50 + int(self.charSize), self.height - 50, fill=self.charColor, outline=self.charColor)
         self.generate_world()
         self.c.pack()
         self.root.after(16, self.afterloop)
@@ -261,16 +274,16 @@ class Main():
             if self.movingleft:
                 self.c.move(self.character, -5 ,0)
                 self.pos = max(self.c.coords(self.character)[0], 0)
-                self.pos2 = self.pos + 50
+                self.pos2 = self.pos + self.charSize
                 self.posy=[self.c.coords(self.character)[1], self.c.coords(self.character)[3]]
                 self.c.coords(self.character, self.pos, self.posy[0], self.pos2, self.posy[1])
             if self.movingright:
                 self.c.move(self.character, 5 ,0)
                 self.pos2 = min(self.c.coords(self.character)[2], self.width)
-                self.pos = self.pos2 - 50
+                self.pos = self.pos2 - self.charSize
                 self.posy=[self.c.coords(self.character)[1], self.c.coords(self.character)[3]]
                 self.c.coords(self.character, self.pos, self.posy[0], self.pos2, self.posy[1])
-            self.win = self.arr[-1].check(self.num, charPos=[self.c.coords(self.character)[0] + self.recoil, self.c.coords(self.character)[1] + self.recoil])
+            self.win = self.arr[-1].check(self.num, charPos=[self.c.coords(self.character)[0] + self.recoil, self.data["custom"]["characterSize"]])
             if not self.win:
                 self.root.after(16, self.afterloop)
             else:
@@ -287,15 +300,18 @@ class Main():
     def flag(self, element, num, side):
         if side == "right":
             if element == "hole":
-                print("Entering {}th hole".format(num))
                 self.islandingX = False
                 self.currentX["type"] = "Hole"
                 self.currentX["num"] = num
             elif element == "platform":
-                print("Entering {}th platform".format(num + 1))
                 self.islandingX = True
                 self.currentX["type"] = "Platform"
                 self.currentX["num"] = (num + 1)
+
+
+    def setworldid(self, num):
+        self.worldId = self.levels[int("{}".format(num - num))][0]
+        self.master.destroy()
 print("Defined all classes")
 
 

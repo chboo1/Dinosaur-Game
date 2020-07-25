@@ -33,9 +33,9 @@
 	],
 	"custom":
 	{
-		"skyColor":"default",
-		"groundColor":"default",
-		"characterColor":"#ffffff",
-		"characterSize":50
+		"skyColor":"#ff00ff",
+		"groundColor":"#00ff00",
+		"characterColor":"default",
+		"characterSize":100
 	}
 }
