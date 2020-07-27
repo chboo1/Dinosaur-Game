@@ -36,20 +36,16 @@ class Platform(Element):
         self.myitem = self.c.create_rectangle(self.owndata["pos"], self.height - 50, self.owndata["end"], self.height, fill=self.color, outline=self.color)
         return self.myitem
 
-
     def mycoords(self):
         return [self.owndata["pos"], self.owndata["end"]]
 
-
     def check(self, mynum, charPos=[None, None]):
-        self.mynum = mynum
-        self.charPos = charPos
-        if self.charPos[0] <= self.owndata["end"] and self.charPos[1] >= self.owndata["pos"]:
-            return [mynum, True, False]
-        elif self.charPos[1] < self.owndata["pos"]:
-            return [mynum - 1, False, False]
-        elif self.charPos[0] > self.owndata["end"]:
-            return [mynum + 1, False, False]
+        if charPos[0] <= self.owndata["end"] and charPos[1] >= self.owndata["pos"]:
+            return [mynum, True]
+        elif charPos[1] < self.owndata["pos"]:
+            return [mynum - 1, False]
+        elif charPos[0] > self.owndata["end"]:
+            return [mynum + 1, False]
         else:
             raise ValueError
 
@@ -59,15 +55,12 @@ class Flag(Element):
         self.owndata = owndata
         self.c = c
 
-
     def check(self, num, charPos=[None, None]):
-        self.charPos = charPos
-        self.c.create_line(self.charPos[1], 0, self.charPos[1], 0)
-        if self.charPos[0] + self.charPos[1] >= self.owndata["pos"]:
+        self.c.create_line(charPos[1], 0, charPos[1], 0)
+        if charPos[0] + charPos[1] >= self.owndata["pos"]:
             return True
         else:
             return False
-
 
     def draw(self):
         self.c.create_line(self.owndata["pos"], 0, self.owndata["pos"], 700)
@@ -82,20 +75,16 @@ class Hole(Element):
         self.owndata = owndata
         self.coords = [self.owndata["pos"], self.owndata["end"]]
 
-
     def mycoords(self):
         return self.coords
 
-
     def check(self, mynum, charPos=[None, None]):
-        self.mynum = mynum
-        self.charPos = charPos
-        if self.charPos[0] > self.coords[0] and self.charPos[1] < self.coords[1]:
-            return [mynum, False, False]
-        elif self.charPos[0] <= self.coords[0]:
-            return [mynum, True, False]
-        elif self.charPos[1] >= self.coords[1]:
-            return [mynum + 1, True, False]
+        if charPos[0] > self.coords[0] and charPos[1] < self.coords[1]:
+            return [mynum, False]
+        elif charPos[0] <= self.coords[0]:
+            return [mynum - 1, True]
+        elif charPos[1] >= self.coords[1]:
+            return [mynum + 1, True]
         else:
             raise ValueError
 
@@ -103,9 +92,7 @@ class Hole(Element):
 class Main():
     def __init__(self, world):
         self.worldDir = "{}/data".format(os.path.dirname(os.path.realpath(__file__)))
-
         self.start()
-
 
     def start(self):
         self.master = Tk()
@@ -125,7 +112,7 @@ class Main():
             self.canvas.create_text(self.width / 2, self.pos + 15, text=level[0])
             self.pos += 30
             me = self.levels[i - 1][1]
-            self.canvas.tag_bind(me, "<Button-1>", lambda e: self.setworldid(i))
+            # self.canvas.tag_bind(me, "<Button-1>", lambda e: self.setworldid(i))
             i += 1
                         
         self.started = False
@@ -217,7 +204,7 @@ class Main():
 
 
     def generate_world(self):
-        self.groundColor = "#a54a2a" if self.data["custom"]["groundColor"] == "default" else  self.data["custom"]["groundColor"]
+        self.groundColor = "#a54a2a" if self.data["custom"]["groundColor"] == "default" else self.data["custom"]["groundColor"]
         for i in self.worldarr:
             if i["type"] == "platform":
                 self.arr.append(Platform(i, self.c, self.root, self.groundColor))
@@ -251,7 +238,7 @@ class Main():
                 time.sleep(3)
                 self.kr()
                 sys.exit(0)
-            self.num, self.canLand, self.win = self.arr[self.num].check(self.num, charPos=[self.c.coords(self.character)[0] + self.recoil, self.c.coords(self.character)[2] + self.recoil])
+            self.num, self.canLand = self.arr[self.num].check(self.num, charPos=[self.c.coords(self.character)[0] + self.recoil, self.c.coords(self.character)[2] + self.recoil])
             self.c.move("all", -1, 0)
             self.c.move (self.character, 1, 0)
             self.recoil += 1
@@ -283,7 +270,7 @@ class Main():
                 self.pos = self.pos2 - self.charSize
                 self.posy=[self.c.coords(self.character)[1], self.c.coords(self.character)[3]]
                 self.c.coords(self.character, self.pos, self.posy[0], self.pos2, self.posy[1])
-            self.win = self.arr[-1].check(self.num, charPos=[self.c.coords(self.character)[0] + self.recoil, self.data["custom"]["characterSize"]])
+            self.win = self.arr[-1].check(self.num, charPos=[self.c.coords(self.character)[0] + self.recoil, self.charSize])
             if not self.win:
                 self.root.after(16, self.afterloop)
             else:
@@ -314,12 +301,5 @@ class Main():
         self.master.destroy()
 print("Defined all classes")
 
-
-try:
-    with open("{}/{}.json".format(worldDir, worldId), "r") as f:
-        data = load(f)
-except FileNotFoundError:
-    print("File not found")
-    sys.exit(1)
-print("Starting up...")
+print("Starting up")
 game = Main(worldDir)
