@@ -1,3 +1,4 @@
+from __future__ import division
 from json import load
 from tkinter import Tk, Canvas, PhotoImage
 import sys
@@ -98,6 +99,7 @@ class Main():
 
     def start(self):
         self.master = Tk()
+        self.jumps = 0
         self.width = self.master.winfo_screenwidth()
         self.levels = []
         self.height = self.master.winfo_screenheight() - 55
@@ -131,19 +133,12 @@ class Main():
                 self.data = load(self.f)
         except FileNotFoundError:
             print("File not found")
-            sys.exit(1)
+            sys.exit(0)
         self.win = False
         self.recoil = 0
         self.num = 0
         self.recoil = 0
-        self.canLand = True
-        self.islandingX = True
-        self.movingleft = False
-        self.movingright = False
-        self.jumpcurrentheight = 0
-        self.inair = False
-        self.doublejumpdone = False
-        self.jumping = False
+        self.time = 0
         self.world = self.data
         self.worldarr = self.world["world"]
         self.root = Tk()
@@ -162,8 +157,12 @@ class Main():
         self.generate_world()
         self.c.pack()
         self.inputs = []
-        print(self.afterloop)
+        self.mode = "NORMAL"
+        self.speed = 0
+        self.xspeed = 0
+        self.yspeed = 0
         self.root.after(16, self.afterloop)
+        #self.root.bind("<FocusOut>", self.inputs.clear())
         self.root.bind("<KeyPress>", self.key)
         self.root.bind("<KeyRelease>", self.keyRelease)
         self.root.bind("<Escape>", self.kr)
@@ -178,7 +177,14 @@ class Main():
             if event.keysym == "d":
                 self.inputs.append("RIGHT")
             if event.keysym == "space":
-                self.inputs.append("JUMP")
+                if self.time == 0:
+                    self.time = 1
+                if not "JUMP" in self.inputs:
+                    if self.jumps < 2:
+                        self.inputs.append("JUMP")
+                        self.jumps += 1
+            if event.keysym == "grave":
+                self.debug()
         else:
             if event.keysym == "Return":
                 self.started = True
@@ -195,12 +201,22 @@ class Main():
         if event.keysym == "d":
             self.inputs.remove("RIGHT")
         if event.keysym == "space":
-            self.inputs.remove("JUMP")
+            if "JUMP" in self.inputs:
+                self.inputs.remove("JUMP")
 
 
     def kr(self, event=None):
         self.root.destroy()
         self.start()
+
+
+    def debug(self):
+        print("Debug Time")
+        if self.mode == "DEBUG":
+            self.mode = "NORMAL"
+        elif self.mode == "NORMAL":
+            self.mode = "DEBUG"
+
 
 
     def quit(self, event=None):
@@ -224,15 +240,25 @@ class Main():
     def afterloop(self):
         # flag AFTERLOOP
         if self.started:
+            print(self.jumps)
             self.c.move("all", -1, 0)
-            self.c.move(self.character, 1, 0)
-            self.state = self.fsm.getState(self.inputs, self.state)
-            if self.state.value == "MOVE":
-                self.c.move(self.character, 20 * self.state.direction, 0)
-            if self.state.value == "JUMP":
-                self.c.move(self.character, 0, -10)
-            if self.state.value == "FALL":
-                self.c.move(self.character, 0, 2)
+            self.c.move(self.character, 1 + self.xspeed, 0 + self.yspeed)
+            self.state = self.fsm.getState(self.inputs, self.state, pos=self.c.coords(self.character), jumps=self.jumps)
+            if self.state.value == "MOVE" or self.state.value == "JUMP":
+                self.xspeed = 20 * self.state.direction
+            else:
+                self.xspeed = 0
+            if self.state.value == "JUMP" and self.c.coords(self.character)[3] <= self.height - 50:
+                self.time += 0.05
+                self.yspeed = -20 * self.time + 9 * self.time ** 2
+            elif self.c.coords(self.character)[3] > self.height - 50:
+                self.c.coords(self.character, self.c.coords(self.character)[0], self.height - 50 - self.charSize, self.c.coords(self.character)[2], self.height - 50)
+                self.jumps = 0
+                self.time = 0
+                self.yspeed = 0
+            else:
+                self.time = 0
+                self.yspeed = 5
             self.root.after(16, self.afterloop)
         else:
             self.canvas.itemconfig(self.text, text=self.worldId)
@@ -246,22 +272,26 @@ class FSM():
         self.groundLevel = groundLevel
 
 
-    def getState(self, inputs,  state,  pos=[]):
+    def getState(self, inputs,  state,  pos=[], jumps=0):
         self.pos = pos
         self.inputs = inputs
+        self.jumps = jumps
         self.state = state
         if self.inputs:
+            if "JUMP" in self.inputs and self.jumps < 2:
+                if "LEFT" in self.inputs:
+                    return Jump(-1)
+                elif "RIGHT" in self.inputs:
+                    return Jump(1)
+                else:
+                    return Jump(0)
             if "LEFT" in self.inputs:
                 return Move(direction=-1)
             if "RIGHT" in self.inputs:
                 return Move(direction=1)
-            if not "LEFT" in self.inputs and not "RIGHT" in self.inputs and not "JUMP" in self.inputs and not self.state.value == "FALL":
-                return Stand()
-            if "JUMP" in self.inputs:
-                return Jump()
-            if self.pos[3] < self.groundLevel and not self.state.value == "JUMP":
-                return Fall()
             else:
+                return Stand()
+            if not "LEFT" in self.inputs and not "RIGHT" in self.inputs and not "JUMP" in self.inputs:
                 return Stand()
         else:
             return Stand()
@@ -282,8 +312,9 @@ class Move():
 
 class Jump():
     #flag JUMP
-    def __init__(self):
+    def __init__(self, direction):
         self.value = "JUMP"
+        self.direction = direction
 
 
 class Fall():
