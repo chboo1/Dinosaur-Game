@@ -103,7 +103,6 @@ class Main():
         self.width = self.master.winfo_screenwidth()
         self.levels = []
         self.height = self.master.winfo_screenheight() - 55
-        self.fsm = FSM(self.height - 50, state=self.state)
         self.master.geometry("{}x{}".format(self.width, self.height))
         self.canvas = Canvas(self.master, width=self.width, height=self.height)
         self.text = self.canvas.create_text(500, 100, fill="#000000", text="", anchor="w")
@@ -162,7 +161,7 @@ class Main():
         self.xspeed = 0
         self.yspeed = 0
         self.root.after(16, self.afterloop)
-        #self.root.bind("<FocusOut>", self.inputs.clear())
+        self.root.bind("<FocusOut>", lambda e: self.inputs.clear())
         self.root.bind("<KeyPress>", self.key)
         self.root.bind("<KeyRelease>", self.keyRelease)
         self.root.bind("<Escape>", self.kr)
@@ -173,16 +172,11 @@ class Main():
     def key(self, event=None):
         if self.started:
             if event.keysym == "a":
-                self.inputs.append("LEFT")
+                self.state.handle_left(self.inputs)
             if event.keysym == "d":
-                self.inputs.append("RIGHT")
+                self.state.handle_right(self.inputs)
             if event.keysym == "space":
-                if self.time == 0:
-                    self.time = 1
-                if not "JUMP" in self.inputs:
-                    if self.jumps < 2:
-                        self.inputs.append("JUMP")
-                        self.jumps += 1
+                self.state.handle_jump(self.inputs)
             if event.keysym == "grave":
                 self.debug()
         else:
@@ -236,91 +230,153 @@ class Main():
             obj.draw()
             self.landingX.append([obj.mycoords()[0], obj.mycoords()[1]])
 
+    def is_on_platform(self):
+        return self.c.coords(self.character)[3] > self.height - 50
+
 
     def afterloop(self):
         # flag AFTERLOOP
         if self.started:
-            print(self.jumps)
             self.c.move("all", -1, 0)
+            self.state = self.state.get_next_state(self.inputs, self.is_on_platform())
+            self.xspeed = self.state.get_xspeed()
+            self.yspeed = self.state.get_yspeed()
             self.c.move(self.character, 1 + self.xspeed, 0 + self.yspeed)
-            self.state = self.fsm.getState(self.inputs, self.state, pos=self.c.coords(self.character), jumps=self.jumps)
-            if self.state.value == "MOVE" or self.state.value == "JUMP":
-                self.xspeed = 20 * self.state.direction
-            else:
-                self.xspeed = 0
-            if self.state.value == "JUMP" and self.c.coords(self.character)[3] <= self.height - 50:
-                self.time += 0.05
-                self.yspeed = -20 * self.time + 9 * self.time ** 2
-            elif self.c.coords(self.character)[3] > self.height - 50:
-                self.c.coords(self.character, self.c.coords(self.character)[0], self.height - 50 - self.charSize, self.c.coords(self.character)[2], self.height - 50)
-                self.jumps = 0
-                self.time = 0
-                self.yspeed = 0
-            else:
-                self.time = 0
-                self.yspeed = 5
+            #if self.c.coords(self.character)[3] > self.height - 50:
+             #   self.c.coords(self.character, self.c.coords(self.character)[0], self.height - 50 - self.charSize, self.c.coords(self.character)[2], self.height - 50)
             self.root.after(16, self.afterloop)
         else:
             self.canvas.itemconfig(self.text, text=self.worldId)
             self.master.after(16, self.afterloop)
 
 
-class FSM():
-    #flag FSM
-    def __init__(self, groundLevel=100, state=None):
-        self.state = state
-        self.groundLevel = groundLevel
+class State():
+    def get_xspeed(self):
+        return 0
+    def get_yspeed(self):
+        return 0
+    def handle_left(self, inputs):
+        inputs.append("LEFT")
+    def handle_right(self, inputs):
+        inputs.append("RIGHT")
+    def handle_jump(self, inputs):
+        inputs.append("JUMP")
+    def get_next_state(self, inputs, pos):
+        pass
 
 
-    def getState(self, inputs,  state,  pos=[], jumps=0):
-        self.pos = pos
-        self.inputs = inputs
-        self.jumps = jumps
-        self.state = state
-        if self.inputs:
-            if "JUMP" in self.inputs and self.jumps < 2:
-                if "LEFT" in self.inputs:
-                    return Jump(-1)
-                elif "RIGHT" in self.inputs:
-                    return Jump(1)
-                else:
-                    return Jump(0)
-            if "LEFT" in self.inputs:
-                return Move(direction=-1)
-            if "RIGHT" in self.inputs:
-                return Move(direction=1)
-            else:
-                return Stand()
-            if not "LEFT" in self.inputs and not "RIGHT" in self.inputs and not "JUMP" in self.inputs:
-                return Stand()
-        else:
-            return Stand()
-
-
-class Stand():
+class Stand(State):
     #flag STAND
     def __init__(self):
         self.value = "STAND"
 
+    def get_direction(self):
+        return 0
 
-class Move():
+    def get_next_state(self, inputs, onGround):
+        if "JUMP" in inputs:
+            return Jump(self.get_direction())
+        if "LEFT" in inputs:
+            return Move(direction=-1)
+        if "RIGHT" in inputs:
+            return Move(direction=1)
+        return Stand()
+
+
+class Move(Stand):
     #flag MOVE
     def __init__(self, direction=0):
-        self.value="MOVE"
+        self.value = "MOVE"
         self.direction = direction
 
+    def get_direction(self):
+        return self.direction
 
-class Jump():
+    def get_xspeed(self):
+        return 20 * self.direction
+
+class Jump(State):
     #flag JUMP
-    def __init__(self, direction):
+    def __init__(self, direction, jumps=0, gravity=1):
         self.value = "JUMP"
         self.direction = direction
+        self.jumps = jumps
+        self.gravity = gravity
+
+    def get_directon(self):
+        return self.direction
+
+    def get_xspeed(self):
+        return 20 * self.direction
 
 
-class Fall():
+    def get_yspeed(self):
+        self.gravity + 0.05
+        return -15 * self.gravity + 7 * self.gravity ** 2
+
+    def handle_jump(self, inputs):
+        if self.jumps < 2:
+            inputs.append("JUMP")
+            self.jumps += 1
+
+    def get_next_state(self, inputs, onGround) -> State:
+        if "JUMP" in inputs:
+            if "LEFT" in inputs:
+                return Jump(-1, self.jumps, self.gravity)
+            if "RIGHT" in inputs:
+                return Jump(1, self.jumps, self.gravity)
+            return Jump(0, self.jumps, self.gravity)
+        else:#if "JUMP" not in inputs or not 5 * self.gravity ** 2 > -10 * self.gravity:
+            if "LEFT" in inputs:
+                return Fall(-1, self.jumps)
+            if "RIGHT" in inputs:
+                return Fall(1, self.jumps)
+            return Fall(0, self.jumps)
+            
+    
+class Fall(State):
     #flag FALL
-    def __init__(self):
+    def __init__(self, direction,  jumps):
         self.value = "FALL"
+        self.jumps = jumps
+        self.direction = direction
+
+
+
+    def handle_jump(self, inputs):
+        if self.jumps < 2:
+            inputs.append("JUMP")
+            self.jumps += 1
+
+
+    def get_next_state(self, inputs, onGround):
+        if "JUMP" in inputs:
+            if "LEFT" in inputs:
+                return Jump(-1, self.jumps)
+            if "RIGHT" in inputs:
+                return Jump(1, self.jumps)
+            return Jump(0, self.jumps)
+        else:
+            if not onGround:
+                if "LEFT" in inputs:
+                    return Fall(-1, self.jumps)
+                if "RIGHT" in inputs:
+                    return Fall(1, self.jumps)
+                return Fall(0, self.jumps)
+            elif self.direction != 0:
+                return Move(direction=self.direction)
+            else:
+                return Stand()
+                
+
+
+    def get_xspeed(self):
+        return 20 * self.direction
+
+
+    def get_yspeed(self):
+        return 5
+
 
 
 print("Defined all classes")
