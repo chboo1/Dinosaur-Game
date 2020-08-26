@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 /home/pi/Dinosaur-Game/dino.py > /dev/null 2>&1

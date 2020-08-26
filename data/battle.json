@@ -1,0 +1,27 @@
+{
+	"world":
+	[
+		{
+			"type":"platform",
+			"pos":0,
+			"end":450
+		},
+		{
+			"type":"platform",
+			"pos":600,
+			"end":1000
+		},
+		{
+			"type":"flag",
+			"pos":1000,
+			"end":1000
+		}
+	],
+	"custom":
+	{
+		"skyColor":"default",
+		"characterSize":"default",
+		"characterColor":"default",
+		"groundColor":"default"
+	}	
+}

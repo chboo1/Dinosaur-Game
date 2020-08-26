@@ -4,6 +4,7 @@ from tkinter import Tk, Canvas, PhotoImage
 import sys
 import time
 import os
+import math
 print("Imported all necessary libraries.")
 
 worldDir = "/mnt/raid/Dinosaur-Game/data"
@@ -153,6 +154,18 @@ class Main():
         self.charColor = "#ffff00" if self.data["custom"]["characterColor"] == "default" else self.data["custom"]["characterColor"]
         self.charSize = 50 if self.data["custom"]["characterSize"] == "default" else self.data["custom"]["characterSize"]
         self.character = self.c.create_oval(50, self.height - (50 + int(self.charSize)), 50 + int(self.charSize), self.height - 50, fill=self.charColor, outline=self.charColor)
+        self.enemy = self.c.create_oval(100, self.height - (50 + int(self.charSize)), 100 + int(self.charSize), self.height - 50, fill="#ff7700", outline="#ff0000")
+        self.charhurt = self.c.create_rectangle(50, self.height - 50 + int(self.charSize), 50 + int(self.charSize), self.height - 50, outline="#000000", state="hidden")
+        self.enehurt = self.c.create_rectangle(50, self.height - 50 + int(self.charSize), 50 + int(self.charSize), self.height - 50, outline="#ffff00", state="hidden")
+        self.xspd = self.c.create_text(100, 100, anchor="sw", text="X speed : 0", state="hidden")
+        self.cx = self.c.coords(self.character)[0] + self.c.coords(self.character)[2] / 2
+        self.cy = self.c.coords(self.character)[1] + self.c.coords(self.character)[3] / 2
+        self.bullets = []
+        self.bullets.append(self.c.create_oval(self.cx - 5, self.cy - 5, self.cx + 5, self.cy + 5, fill="#808080"))
+        self.bcos = 0
+        self.bsin = 0
+        self.eknock = 0
+        self.line = self.c.create_line(0, 0, 100, 100, state="hidden")
         self.generate_world()
         self.c.pack()
         self.inputs = []
@@ -160,11 +173,20 @@ class Main():
         self.speed = 0
         self.xspeed = 0
         self.yspeed = 0
+        self.ethrow = False
+        self.hitx = []
+        self.hity = []
+        self.moved = False
+        self.egrabed = False
+        self.recoil = 0
         self.root.after(16, self.afterloop)
         self.root.bind("<FocusOut>", lambda e: self.inputs.clear())
         self.root.bind("<KeyPress>", self.key)
         self.root.bind("<KeyRelease>", self.keyRelease)
+        self.root.bind("<Motion>", self.motion)
         self.root.bind("<Escape>", self.kr)
+        self.root.bind("<ButtonPress-1>", self.grab)
+        self.root.bind("<ButtonRelease-1>", self.BRelease)
         self.root.mainloop()
 
 
@@ -190,13 +212,16 @@ class Main():
 
 
     def keyRelease(self, event=None):
-        if event.keysym == "a":
-            self.inputs.remove("LEFT")
-        if event.keysym == "d":
-            self.inputs.remove("RIGHT")
-        if event.keysym == "space":
-            if "JUMP" in self.inputs:
-                self.inputs.remove("JUMP")
+        try:
+            if event.keysym == "a":
+                self.inputs.remove("LEFT")
+            if event.keysym == "d":
+                self.inputs.remove("RIGHT")
+            if event.keysym == "space":
+                if "JUMP" in self.inputs:
+                    self.inputs.remove("JUMP")
+        except ValueError:
+            pass
 
 
     def kr(self, event=None):
@@ -205,12 +230,101 @@ class Main():
 
 
     def debug(self):
-        print("Debug Time")
         if self.mode == "DEBUG":
             self.mode = "NORMAL"
+            self.c.itemconfig(self.line, state="hidden")
+            self.c.itemconfig(self.xspd, state="hidden")
+            self.c.itemconfig(self.charhurt, state="hidden")
         elif self.mode == "NORMAL":
+            self.c.itemconfig(self.line, state="normal")
+            self.c.itemconfig(self.xspd, state="normal")
+            self.c.itemconfig(self.charhurt, state="normal")
             self.mode = "DEBUG"
 
+    def move(self, event=None):
+        self.pos = self.c.coords(self.character)
+        self.cx = (self.pos[0] + self.pos[2]) / 2
+        self.cy = (self.pos[1] + self.pos[3]) / 2
+        self.dx = self.mx - self.cx
+        self.dy = self.my - self.cy
+        self.h = (self.dx ** 2 + self.dy ** 2) ** 0.5
+        try:
+            self.sin = self.dy / self.h
+        except ZeroDivisionError:
+            self.sin = 0
+        try:
+            self.cos = self.dx / self.h
+        except ZeroDivisionError:
+            self.cos = 0
+        self.c.coords(self.line, self.cx + self.cos * 25, self.cy + self.sin * 25, self.cx + self.cos * 100, self.cy + self.sin * 100)
+        if self.egrabed:
+            self.dx = self.mx - self.clx
+            self.dy = self.my - self.cly
+            if self.dx + self.dy >= 50 or self.dx + self.dy <= -50:
+                try:
+                    self.sin = self.dy / self.h
+                except ZeroDivisionError:
+                    self.sin = 0
+                try:
+                    self.cos = self.dx / self.h
+                except ZeroDivisionError:
+                    self.cos = 0
+                self.sx = self.cos * ((self.eknock / 2) + 10)
+                self.sy = self.sin * ((self.eknock / 2) + 10)
+                self.gravity = 0
+                self.ethrow = True
+                self.egrabed = False
+
+
+    def grab(self, event=None):
+        self.pos = self.c.coords(self.character)
+        self.hitx = []
+        self.hity = []
+        self.hitbox = []
+        self.cx = (self.pos[0] + self.pos[2]) / 2
+        self.cy = (self.pos[1] + self.pos[3]) / 2
+        self.dx = self.cx - self.mx
+        self.dy = self.cy - self.my
+        self.h = (self.dx ** 2 + self.dy ** 2) ** 0.5
+        try:
+            self.sin = self.dy / self.h
+        except ZeroDivisionError:
+            self.sin = 0
+        try:
+            self.cos = self.dx / self.h
+        except ZeroDivisionError:
+            self.cos = 0
+        i = 1
+        while i > -100:
+            self.hitbox.append([self.cx + i * self.cos, self.cy + -i * self.sin])
+            i -= 1
+        self.epos = self.c.coords(self.enemy)
+        for x, y in self.hitbox:
+            if self.epos[0] <= x <= self.epos[2] and self.epos[1] <= y <= self.epos[3]:
+                self.egrabed = True
+                self.clx = event.x
+                self.cly = event.y
+                break
+
+
+
+    def BRelease(self, event=None):
+        self.hitx = []
+        self.hity = []
+        self.hitbox = []
+        if self.egrabed:
+            self.eknock += 5
+            self.c.move(self.enemy, self.cos * 10 + eknock, self.sin * 10 + eknock)
+            self.ethrow = True
+        self.egrabed = False
+
+
+
+
+    def motion(self, event=None):
+        self.mx = event.x
+        self.my = event.y
+        self.moved = True
 
 
     def quit(self, event=None):
@@ -228,22 +342,40 @@ class Main():
                 self.arr.append(Hole(i))
         for obj in self.arr:
             obj.draw()
-            self.landingX.append([obj.mycoords()[0], obj.mycoords()[1]])
+            self.landingX.extend(range(obj.mycoords()[0], obj.mycoords()[1]))
 
-    def is_on_platform(self):
-        return self.c.coords(self.character)[3] > self.height - 50
+    def is_on_platform(self, obj, recoil=False):
+        if recoil:
+            return self.c.coords(obj)[3] >= self.height - 50 and (self.c.coords(obj)[0] + self.recoil in self.landingX or self.c.coords(obj)[2] + self.recoil in self.landingX)
+        else:
+            return self.c.coords(obj)[3] >= self.height - 50 and (math.floor(self.c.coords(obj)[0] - self.recoil) in self.landingX or math.floor(self.c.coords(obj)[2] - self.recoil) in self.landingX)
 
 
+            
     def afterloop(self):
         # flag AFTERLOOP
         if self.started:
+            if self.moved:
+                self.move()
             self.c.move("all", -1, 0)
-            self.state = self.state.get_next_state(self.inputs, self.is_on_platform())
+            self.state = self.state.get_next_state(self.inputs, self.is_on_platform(self.character, recoil=True))
             self.xspeed = self.state.get_xspeed()
             self.yspeed = self.state.get_yspeed()
+            self.c.itemconfig(self.xspd, text="X speed : {}".format(self.xspeed))
             self.c.move(self.character, 1 + self.xspeed, 0 + self.yspeed)
-            #if self.c.coords(self.character)[3] > self.height - 50:
-             #   self.c.coords(self.character, self.c.coords(self.character)[0], self.height - 50 - self.charSize, self.c.coords(self.character)[2], self.height - 50)
+            self.c.move(self.line, 1 + self.xspeed, 0 + self.yspeed)
+            self.c.move(self.bullets[0], 1 + self.bcos * -20, 0 + self.bsin * -20)
+            self.recoil += 1
+            if self.ethrow:
+                self.c.move(self.enemy, self.sx, 0 + self.sy * self.gravity + 7 * self.gravity ** 2)
+                self.gravity += 0.05
+                if self.is_on_platform(self.enemy, recoil=False):
+                    self.ethrow = False
+                    self.pos = self.c.coords(self.enemy)
+                    self.c.coords(self.enemy, self.pos[0], self.height - 50 - self.charSize, self.pos[2], self.height - 50)
+            self.c.move(self.xspd, 1, 0)
+            self.pos = self.c.coords(self.character)
+            self.c.coords(self.charhurt, self.pos[0], self.pos[1], self.pos[2], self.pos[3])
             self.root.after(16, self.afterloop)
         else:
             self.canvas.itemconfig(self.text, text=self.worldId)
@@ -280,6 +412,12 @@ class Stand(State):
             return Move(direction=-1)
         if "RIGHT" in inputs:
             return Move(direction=1)
+        if not onGround:
+            if "LEFT" in inputs:
+                return Fall(-1, 1)
+            if "RIGHT" in inputs:
+                return Fall(1, 1)
+            return Fall(0, 1)
         return Stand()
 
 
