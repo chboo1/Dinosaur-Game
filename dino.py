@@ -132,7 +132,12 @@ class Main():
             with open("{}/{}.json".format(self.worldDir, self.worldId), "r") as self.f:
                 self.data = load(self.f)
         except FileNotFoundError:
-            print("File not found")
+            self.worldDir = "{}/customstages".format(os.path.dirname(os.path.realpath(__file__)))
+            try:
+                with open("{}/{}.json".format(self.worldDir, self.worldId), "r") as self.f:
+                    self.data = load(self.f)
+            except FileNotFoundError:
+                sys.exit(0)
             sys.exit(0)
         self.win = False
         self.recoil = 0
@@ -406,18 +411,18 @@ class Stand(State):
         return 0
 
     def get_next_state(self, inputs, onGround):
-        if "JUMP" in inputs:
-            return Jump(self.get_direction())
-        if "LEFT" in inputs:
-            return Move(direction=-1)
-        if "RIGHT" in inputs:
-            return Move(direction=1)
         if not onGround:
             if "LEFT" in inputs:
                 return Fall(-1, 1)
             if "RIGHT" in inputs:
                 return Fall(1, 1)
             return Fall(0, 1)
+        if "JUMP" in inputs:
+            return Jump(self.get_direction())
+        if "LEFT" in inputs:
+            return Move(direction=-1)
+        if "RIGHT" in inputs:
+            return Move(direction=1)
         return Stand()
 
 
