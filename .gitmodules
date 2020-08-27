@@ -1,0 +1,3 @@
+[submodule "stages"]
+	path = stages
+	url = https://github.com/chboo1/Dino-Stages.git

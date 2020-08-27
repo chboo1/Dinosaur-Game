@@ -95,7 +95,7 @@ class Main():
     def __init__(self, world):
         self.inputs = []
         self.state = Stand()
-        self.worldDir = "{}/data".format(os.path.dirname(os.path.realpath(__file__)))
+        self.worldDir = "{}/stages".format(os.path.dirname(os.path.realpath(__file__)))
         self.start()
 
     def start(self):

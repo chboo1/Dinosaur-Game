@@ -1,0 +1,2 @@
+#!/bin/bash
+wget -rP $(dirname $0)/data https://raw.githubusercontent.com/chboo1/Dino-Stages/master/
