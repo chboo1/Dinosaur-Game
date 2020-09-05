@@ -95,6 +95,7 @@ class Main():
     def __init__(self, world):
         self.inputs = []
         self.state = Stand()
+        self.estate = Stand()
         self.worldDir = "{}/stages".format(os.path.dirname(os.path.realpath(__file__)))
         self.start()
 
@@ -319,7 +320,7 @@ class Main():
         self.hitbox = []
         if self.egrabed:
             self.eknock += 5
-            self.c.move(self.enemy, self.cos * 10 + eknock, self.sin * 10 + eknock)
+            self.c.move(self.enemy, self.cos * 10 + self.eknock, self.sin * 10 + self.eknock)
             self.ethrow = True
         self.egrabed = False
 
@@ -352,8 +353,6 @@ class Main():
     def is_on_platform(self, obj, recoil=False):
         if recoil:
             return self.c.coords(obj)[3] >= self.height - 50 and (self.c.coords(obj)[0] + self.recoil in self.landingX or self.c.coords(obj)[2] + self.recoil in self.landingX)
-        else:
-            return self.c.coords(obj)[3] >= self.height - 50 and (math.floor(self.c.coords(obj)[0] - self.recoil) in self.landingX or math.floor(self.c.coords(obj)[2] - self.recoil) in self.landingX)
 
 
             
@@ -510,7 +509,6 @@ class Fall(State):
                 return Move(direction=self.direction)
             else:
                 return Stand()
-                
 
 
     def get_xspeed(self):
@@ -519,6 +517,24 @@ class Fall(State):
 
     def get_yspeed(self):
         return 5
+
+
+class Egrab(State):
+    def __init__(self):
+        self.value = "EGRAB"
+
+
+    def handle_jump(self, inputs):
+        pass
+
+
+    def handle_left(self, inputs):
+        pass
+
+
+    def handle_right(self, inputs):
+        pass
+
 
 
 
