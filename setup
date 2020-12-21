@@ -1,3 +1,5 @@
 #!/bin/bash
 git submodule init
 git submodule update
+git update-index --skip-worktree gameinfo.json
+mkdir customstages
