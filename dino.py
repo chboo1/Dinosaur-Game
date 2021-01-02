@@ -1,7 +1,6 @@
 from __future__ import division
 from json import load
 from tkinter import Tk, Canvas, PhotoImage
-import pygame
 import sys
 import time
 import os
@@ -95,11 +94,6 @@ class Hole(Element):
 class Main():
     def __init__(self, world):
         self.inputs = []
-        pygame.init()
-        pygame.mixer.init(88100)
-        self.jumpSnd = pygame.mixer.Sound("{}/Mario-jump-sound.wav".format(os.path.dirname(os.path.realpath(__file__))))
-        self.walkSnd = pygame.mixer.Sound("{}/walk.wav".format(os.path.dirname(os.path.realpath(__file__))))
-        self.yaySnd = pygame.mixer.Sound("/home/pi/Clips/YAY.wav")
         self.state = Stand(direction=1)
         self.estate = Stand(direction=1)
         self.states = [self.state, self.estate]
@@ -212,13 +206,9 @@ class Main():
     def key(self, event=None):
         if self.started:
             if event.keysym == "Left":
-                #if "LEFT" not in self.inputs:
-                    #self.walkSnd.play()
                 self.states[self.control].handle_left(self.inputs, self.states)
                 self.states[self.control].handle_throw(self.inputs, self.states, (-1, 0))
             if event.keysym == "Right":
-                #if "RIGHT" not in self.inputs:
-                    #self.walkSnd.play()
                 self.states[self.control].handle_right(self.inputs, self.states)
                 self.states[self.control].handle_throw(self.inputs, self.states, (1, 0))
             if event.keysym == "s":
@@ -251,10 +241,8 @@ class Main():
         try:
             if event.keysym == "Left":
                 self.inputs.remove("LEFT")
-                self.walkSnd.stop()
             if event.keysym == "Right":
                 self.inputs.remove("RIGHT")
-                self.walkSnd.stop()
             if event.keysym == "space":
                 if "JUMP" in self.inputs:
                     self.inputs.remove("JUMP")
@@ -265,7 +253,6 @@ class Main():
 
 
     def kr(self, event=None):
-        self.yaySnd.stop()
         self.root.destroy()
         self.start()
 
@@ -373,10 +360,8 @@ class Main():
                 self.c.move(self.characters[0], 1, 0)
                 self.c.move(self.characters[1], 1, 0)
                 self.recoil += 1
-            print(self.states[self.control])
             self.states[int(self.control)] = self.states[int(self.control)].get_next_state(self.inputs, self.is_on_platform(self.characters[self.control], recoil=False))
             self.states[self.inactiveCharacter()] = self.states[self.inactiveCharacter()].get_next_state([], self.is_on_platform(self.characters[self.inactiveCharacter()], recoil=False))
-            print(self.states[self.control])
             self.exspeed = self.states[self.inactiveCharacter()].get_xspeed()
             self.eyspeed = self.states[self.inactiveCharacter()].get_yspeed()
             self.c.move(self.characters[self.inactiveCharacter()], 0 + self.exspeed, 0 + self.eyspeed)
@@ -387,7 +372,6 @@ class Main():
             elif self.xspeed > 0:
                 self.direction = 1
             self.distance = self.to_pos_neg((self.c.coords(self.characters[0])[0] + self.c.coords(self.characters[0])[2]) / 2, 1) - self.to_pos_neg((self.c.coords(self.characters[1])[0] + self.c.coords(self.characters[1])[2]) / 2, 1)
-            self.yaySnd.set_volume(1 - self.distance * 0.00125)
             self.c.itemconfig(self.xspd, text="X speed : {}".format(self.xspeed))
             if "SPRINT" in self.inputs:
                 self.c.move(self.characters[self.control], 0 + self.xspeed * 2, 0 + self.yspeed)
@@ -397,9 +381,7 @@ class Main():
             self.c.coords(self.line, (self.cpos[0] + self.cpos[2]) / 2, (self.cpos[1] + self.cpos[3]) / 2, (self.cpos[0] + self.cpos[2]) / 2 + 100 * self.direction, (self.cpos[1] + self.cpos[3]) / 2)
             self.distance = self.c.coords
             if self.frames % 420 == 0:
-                self.yaySnd.stop()
                 self.frames = 0
-                self.yaySnd.play()
             self.pos = self.c.coords(self.character)
             self.c.coords(self.charhurt, self.pos[0], self.pos[1], self.pos[2], self.pos[3])
             self.root.after(16, self.afterloop)
@@ -434,6 +416,7 @@ class Stand(State):
     def __init__(self, direction=1):
         self.value = "STAND"
         self.direction = direction
+        print(self.direction)
 
     def get_direction(self):
         return self.direction
@@ -441,10 +424,10 @@ class Stand(State):
     def get_next_state(self, inputs, onGround):
         if not onGround:
             if "LEFT" in inputs:
-                return Fall(-1, 1, looking=self.get_direction)
+                return Fall(-1, 1, looking=self.get_direction())
             if "RIGHT" in inputs:
-                return Fall(1, 1, looking=self.get_direction)
-            return Fall(0, 1, looking=self.get_direction)
+                return Fall(1, 1, looking=self.get_direction())
+            return Fall(0, 1, looking=self.get_direction())
         if "JUMP" in inputs:
             return Jump(self.get_direction(), looking=self.get_direction())
         if "DASH" in inputs:
@@ -453,7 +436,7 @@ class Stand(State):
             return Move(direction=-1)
         if "RIGHT" in inputs:
             return Move(direction=1)
-        return Stand(direction=self.direction)
+        return Stand(direction=self.get_direction())
 
 
 class Move(Stand):
@@ -461,6 +444,7 @@ class Move(Stand):
     def __init__(self, direction=0):
         self.value = "MOVE"
         self.direction = direction
+        print(self.direction)
 
     def get_direction(self):
         return self.direction
@@ -476,6 +460,7 @@ class Jump(State):
         self.jumps = jumps
         self.gravity = gravity
         self.looking = looking
+        print(self.direction, self.looking)
 
     def get_direction(self):
         return self.direction
@@ -498,17 +483,17 @@ class Jump(State):
             if "DASH" in inputs:
                 return Dash(direction=self.looking, jumps=self.jumps)
             if "LEFT" in inputs:
-                return Jump(-1, jumps=self.jumps, gravity=self.gravity, looking=self.looking)
+                return Jump(-1, jumps=self.jumps, gravity=self.gravity, looking=-1)
             if "RIGHT" in inputs:
-                return Jump(1, jumps=self.jumps, gravity=self.gravity, looking=self.looking)
-            return Jump(0, jumps=self.jumps, gravity=self.gravity)
+                return Jump(1, jumps=self.jumps, gravity=self.gravity, looking=1)
+            return Jump(0, jumps=self.jumps, gravity=self.gravity, looking=self.looking)
         else:#if "JUMP" not in inputs or not 5 * self.gravity ** 2 > -10 * self.gravity:
             if "DASH" in inputs:
                 return Dash(direction=self.looking, jumps=self.jumps)
             if "LEFT" in inputs:
-                return Fall(-1, self.jumps, looking=self.looking)
+                return Fall(-1, self.jumps, looking=-1)
             if "RIGHT" in inputs:
-                return Fall(1, self.jumps, looking=self.looking)
+                return Fall(1, self.jumps, looking=1)
             return Fall(0, self.jumps, looking=self.looking)
             
     
@@ -519,6 +504,7 @@ class Fall(State):
         self.jumps = jumps
         self.direction = direction
         self.looking = looking
+        print(self.direction, self.looking)
 
 
 
@@ -539,16 +525,16 @@ class Fall(State):
         else:
             if not onGround:
                 if "DASH" in inputs:
-                    return Dash(direction=self.direction, jumps=self.jumps)
+                    return Dash(direction=self.looking, jumps=self.jumps)
                 if "LEFT" in inputs:
-                    return Fall(-1, self.jumps, looking=self.looking)
+                    return Fall(-1, self.jumps, looking=-1)
                 if "RIGHT" in inputs:
-                    return Fall(1, self.jumps, looking=self.looking)
+                    return Fall(1, self.jumps, looking=1)
                 return Fall(0, self.jumps, looking=self.looking)
             elif self.direction != 0:
-                return Move(direction=self.direction)
+                return Move(direction=self.looking)
             else:
-                return Stand(direction=self.direction)
+                return Stand(direction=self.looking)
 
 
     def get_xspeed(self):
@@ -563,7 +549,6 @@ class Dash(State):
     def __init__(self, direction=0, jumps=0):
         self.value = "DASH"
         self.direction = direction
-        print(self.direction)
         self.jumps = jumps
 
 
